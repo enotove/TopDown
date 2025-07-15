@@ -11,3 +11,8 @@ void ATDPlayerController::BeginPlay()
 	SetInputMode(FInputModeGameOnly());
 	bShowMouseCursor = false;
 }
+void ATDPlayerController::BeginSpectatingState()
+{
+	SetControlRotation(FRotator(-75.f, 0.f, 0.f));
+	Super::BeginSpectatingState();
+}

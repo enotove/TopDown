@@ -8,6 +8,9 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Components/TDHealthComponent.h"
+#include <GameFramework/CharacterMovementComponent.h>
+#include "Weapon\TDWeaponComponent.h"
 
 // Sets default values
 ATDDefaultCharacter::ATDDefaultCharacter()
@@ -30,6 +33,9 @@ ATDDefaultCharacter::ATDDefaultCharacter()
 	cameraComponent->SetupAttachment(springArmComponent);
 	cameraComponent->SetFieldOfView(FOV);
 	cameraComponent->bUsePawnControlRotation = false;
+	
+	healthComponent = CreateDefaultSubobject<UTDHealthComponent>("Health_Component");
+	weaponComponent = CreateDefaultSubobject<UTDWeaponComponent>("Weapon");
 
 }
 
@@ -41,6 +47,9 @@ void ATDDefaultCharacter::BeginPlay()
 	{
 		currentCursor = UGameplayStatics::SpawnDecalAtLocation(GetWorld(), cursorMaterial, cursorSize, FVector(0));
 	}
+	healthComponent->OnDeath.AddUObject(this, &ATDDefaultCharacter::OnDeath);
+	OnHealthChanged(healthComponent->Get_Health());
+	healthComponent->OnHealthChanged.AddUObject(this, &ATDDefaultCharacter::OnHealthChanged);
 	
 }
 
@@ -48,19 +57,22 @@ void ATDDefaultCharacter::BeginPlay()
 void ATDDefaultCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-	if (PC)
+	if (SprintRequest && !canSprint)
 	{
-		FHitResult ResultHit;
-		PC->GetHitResultUnderCursor(ECC_GameTraceChannel1, true, ResultHit);
-		float FindRotatorResultYaw = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), ResultHit.Location).Yaw;
-		SetActorRotation(FQuat(FRotator(0.0f, FindRotatorResultYaw, 0.0f)));
-		if (currentCursor)
-		{
-			
-			currentCursor->SetWorldLocation(ResultHit.Location);
-		}
+		canSprint = true;
+		currentSpeed = GetCharacterMovement()->MaxWalkSpeed;
+		GetCharacterMovement()->MaxWalkSpeed = maxSpeedSprint;
 	}
+	if (!SprintRequest && canSprint)
+	{
+		canSprint = false;
+		GetCharacterMovement()->MaxWalkSpeed = currentSpeed;
+	}
+	if (!(healthComponent->IsDead()))
+	{
+		RotationPlayerOnCursor();
+	}
+	
 
 }
 
@@ -71,7 +83,31 @@ void ATDDefaultCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 	PlayerInputComponent->BindAxis("MoveForward", this, &ATDDefaultCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &ATDDefaultCharacter::MoveRight);
 	PlayerInputComponent->BindAxis("Closer", this, &ATDDefaultCharacter::CloseCamera);
+	PlayerInputComponent->BindAction("Sprint", EInputEvent::IE_Pressed, this, &ATDDefaultCharacter::StartSprint);
+	PlayerInputComponent->BindAction("Sprint", EInputEvent::IE_Released, this, &ATDDefaultCharacter::StopSprint);
+	PlayerInputComponent->BindAction("Fire", EInputEvent::IE_Pressed, weaponComponent, &UTDWeaponComponent::StartFire);
+	PlayerInputComponent->BindAction("Fire", EInputEvent::IE_Released, weaponComponent, &UTDWeaponComponent::StopFire);
+	PlayerInputComponent->BindAction("Reload", EInputEvent::IE_Pressed, weaponComponent, &UTDWeaponComponent::Reload);
 
+
+}
+void ATDDefaultCharacter::OnHealthChanged(float NewHealth) {
+	GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Red, FString::Printf(TEXT("Health = %f"), NewHealth));
+}
+void ATDDefaultCharacter::RotationPlayerOnCursor() {
+	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (PC)
+	{
+		FHitResult ResultHit;
+		PC->GetHitResultUnderCursor(ECC_GameTraceChannel1, true, ResultHit);
+		float FindRotatorResultYaw = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), ResultHit.Location).Yaw;
+		SetActorRotation(FQuat(FRotator(0.0f, FindRotatorResultYaw, 0.0f)));
+		if (currentCursor)
+		{
+
+			currentCursor->SetWorldLocation(ResultHit.Location);
+		}
+	}
 }
 void ATDDefaultCharacter::MoveForward(float Value)
 {
@@ -102,4 +138,25 @@ void ATDDefaultCharacter::CloseCamera(float Value)
 	}
 	
 	
+}
+
+void ATDDefaultCharacter::StartSprint() 
+{
+	SprintRequest = true;
+}
+
+void ATDDefaultCharacter::StopSprint() { 
+	SprintRequest = false;
+}
+
+void ATDDefaultCharacter::OnDeath()
+{
+	currentCursor->DestroyRenderState_Concurrent();
+	PlayAnimMontage(DeathMontage);
+	GetCharacterMovement()->DisableMovement();
+	SetLifeSpan(5.f);
+	if (Controller)
+	{
+		Controller->ChangeState(NAME_Spectating);
+	}
 }
