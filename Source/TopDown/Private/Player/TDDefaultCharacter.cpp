@@ -9,6 +9,11 @@
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Components/TDHealthComponent.h"
+#include "Blueprint/UserWidget.h"
+#include "Components/WidgetComponent.h"
+#include "SlateBasics.h"
+#include "GameFramework/PlayerController.h" 
+#include "Kismet/GameplayStatics.h" 
 #include <GameFramework/CharacterMovementComponent.h>
 #include "Weapon\TDWeaponComponent.h"
 
@@ -155,8 +160,30 @@ void ATDDefaultCharacter::OnDeath()
 	PlayAnimMontage(DeathMontage);
 	GetCharacterMovement()->DisableMovement();
 	SetLifeSpan(5.f);
+	
 	if (Controller)
 	{
+
 		Controller->ChangeState(NAME_Spectating);
+	}
+	if (DeathScreenClass && !DeathScreenInstance)
+	{
+		DeathScreenInstance = CreateWidget<UUserWidget>(GetWorld(), DeathScreenClass);
+
+		if (DeathScreenInstance)
+		{
+
+			DeathScreenInstance->AddToViewport();
+
+			APlayerController* PC = Cast<APlayerController>(GetController());
+			if (PC)
+			{
+				PC->bShowMouseCursor = true;
+				FInputModeUIOnly InputMode;
+				InputMode.SetWidgetToFocus(DeathScreenInstance->TakeWidget());
+				InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+				PC->SetInputMode(InputMode);
+			}
+		}
 	}
 }

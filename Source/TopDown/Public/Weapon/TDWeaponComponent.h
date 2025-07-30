@@ -33,7 +33,7 @@ public:
 	void FireTickon();
 
 	UFUNCTION(BlueprintCallable)
-	bool Get_Current_Ammo(FAmmoWeapon& AmmoWeapon);
+	bool Get_Current_Ammo(FAmmoWeapon& AmmoWeapon) const;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
 	UAnimMontage* ReloadMontage = nullptr;

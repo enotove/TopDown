@@ -120,7 +120,7 @@ void UTDWeaponComponent::FireTickon()
 
 }
 
-bool UTDWeaponComponent::Get_Current_Ammo(FAmmoWeapon& AmmoWeapon)
+bool UTDWeaponComponent::Get_Current_Ammo(FAmmoWeapon& AmmoWeapon) const
 {
 	if (Weapon)
 	{

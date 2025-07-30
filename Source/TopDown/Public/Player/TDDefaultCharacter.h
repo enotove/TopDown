@@ -8,11 +8,14 @@
 
 
 
+
 	class UTDHealthComponent;
 	class UCameraComponent;
 	class USpringArmComponent;
 	class UAnimMontage;
 	class UTDWeaponComponent;
+	class UWidgetComponent;
+	class UUserWidget;
 
 UCLASS()
 class TOPDOWN_API ATDDefaultCharacter : public ACharacter
@@ -48,9 +51,15 @@ protected:
 	float ArmMax = 1600.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
 	float ArmMin = 600.f;
+
 	
 	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UUserWidget> DeathScreenClass;
+
 	
+	UPROPERTY()
+	UUserWidget* DeathScreenInstance;
 
 public:	
 	// Called every frame
